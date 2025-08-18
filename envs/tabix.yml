@@ -1,0 +1,14 @@
+name: tabix
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - biopython
+  - tabix
+  - pyfaidx =0.6.0 
+  - pandas
+  - pysam
+  - samtools
+  - cyvcf2

@@ -1,0 +1,12 @@
+name: pyvcf
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - biopython
+  - pandas
+  - pysam
+  - samtools
+  - cyvcf2
