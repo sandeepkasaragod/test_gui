@@ -15,7 +15,7 @@
             "properties": {
                 "fastq": {
                     "type": "string",
-                    "format": "path",
+                    "format": "directory-path",
                     "title": "FASTQ",
                     "description": "FASTQ/POD5/FAST5 files to upload.",
                     "help_text": "FASTQ/POD5/FAST5 directories to upload."
