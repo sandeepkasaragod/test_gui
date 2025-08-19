@@ -61,27 +61,6 @@
 			"help_text": "You can get the barcode list from Guppy or Dorado GitHub repo."
                 }
 	    },
-            "allOf": [
-                {
-                    "required": [
-                        "primer_schema"
-                    ]
-                },
-                {
-                    "oneOf": [
-                        {
-                            "required": [
-                                "fastq"
-                            ]
-                        },
-                        {
-                            "required": [
-                                "rawfile_type"
-                            ]
-                        }
-                    ]
-                }
-            ]
         },
         "samples": {
             "title": "Sample Options",
