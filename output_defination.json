@@ -1,0 +1,69 @@
+{
+  "files": {
+    "workflow-report": {
+      "filepath": "./report/combined_summary_report.html",
+      "title": "Workflow report",
+      "description": "Combined summary report.",
+      "mime-type": "text/html",
+      "optional": false,
+      "type": "aggregated"
+    },
+    "summary-stats": {
+      "filepath": "./summary_stats/summary_stats.txt",
+      "title": "Summary stats",
+      "description": "Per-run summary statistics.",
+      "mime-type": "text/plain",
+      "optional": false,
+      "type": "aggregated"
+    },
+    "consensus": {
+      "filepath": "./medaka/{{ alias }}.consensus.fasta",
+      "title": "Consensus FASTA",
+      "description": "Final consensus per sample.",
+      "mime-type": "text/plain",
+      "optional": false,
+      "type": "per-sample"
+    },
+    "trimmed-bam": {
+      "filepath": "./medaka/{{ alias }}.primertrimmed.rg.sorted.bam",
+      "title": "Aligned BAM",
+      "description": "Primer-trimmed, sorted alignments.",
+      "mime-type": "application/octet-stream",
+      "optional": false,
+      "type": "per-sample"
+    },
+    "trimmed-bam-bai": {
+      "filepath": "./medaka/{{ alias }}.primertrimmed.rg.sorted.bam.bai",
+      "title": "BAM index",
+      "description": "Index for aligned BAM.",
+      "mime-type": "application/octet-stream",
+      "optional": false,
+      "type": "per-sample"
+    },
+    "variants-pass": {
+      "filepath": "./medaka/{{ alias }}.pass.vcf",
+      "title": "PASS variants",
+      "description": "Filtered variant calls.",
+      "mime-type": "text/plain",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "coverage-mask": {
+      "filepath": "./medaka/{{ alias }}.coverage_mask.txt",
+      "title": "Coverage mask",
+      "description": "Depth-based mask used for consensus.",
+      "mime-type": "text/plain",
+      "optional": true,
+      "type": "per-sample"
+    },
+    "mafft-aln": {
+      "filepath": "./mafft/genome-aln.fasta",
+      "title": "MAFFT alignment",
+      "description": "Alignment of concatenated genomes.",
+      "mime-type": "text/plain",
+      "optional": true,
+      "type": "aggregated"
+    }
+  }
+}
+
