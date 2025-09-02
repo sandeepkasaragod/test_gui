@@ -1,48 +1,33 @@
-//medaka.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
-align_trim = "${currDir}/scripts/align_trim.py"
-
+// modules/minimap2.nf
 process MINIMAP2 {
 
-	//conda 'envs/minimap2.yml' 
+  tag { sampleId }
 
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+  publishDir "${params.out_dir}/medaka", mode: 'copy', overwrite: true
 
-	input:
-	val input_dir
-	tuple val(sampleId), val(item), val(scheme), val(version)
+  input:
+    //path input_dir
+    //tuple val(sampleId), val(item), val(scheme), val(version)
+		path input_dir                                   // staged dir with FASTQs
+    path reference                                   // staged reference FASTA
+    tuple val(sampleId), val(item), val(scheme), val(version)
 
-	output:
-	val "medaka/${sampleId}", emit: consensus
-	val "medaka/${sampleId}.sorted.bam", emit: sorted_bam
+  output:
+    path "${sampleId}.sorted.bam",     emit: sorted_bam
+    path "${sampleId}.sorted.bam.bai", emit: sorted_bai
 
-	script:
-	"""
-	minimap2 -a -x map-ont -t ${params.threads} \
-	${params.primer_schema}/${scheme}/${version}/${scheme}.reference.fasta \
-	${currDir}/raw_files/fastq/${sampleId}_${item}.fastq |\
-	samtools view -bS -F 4 - |\
-	samtools sort -o ${currDir}/results/medaka/${sampleId}.sorted.bam &&\
-	samtools index ${currDir}/results/medaka/${sampleId}.sorted.bam
-	"""
-	}
+  script:
+    """
+    set -euo pipefail
 
+    minimap2 -a -x map-ont -t ${params.threads} \
+			"${reference}"	\
+			"${input_dir}"	\
+    | samtools view -bS -F 4 - \
+    | samtools sort -o "${sampleId}.sorted.bam"
+
+    samtools index "${sampleId}.sorted.bam"
+    """
+}
+
+//"${reference}" "${reads}"

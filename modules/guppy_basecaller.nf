@@ -28,7 +28,7 @@ process GUPPY_BASECALLER {
 
 	label "guppy_basecaller"
 
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${currDir}/${params.out_dir}", mode: 'copy'
 
 	input:
 	path fast5_dir

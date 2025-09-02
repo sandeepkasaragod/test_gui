@@ -1,35 +1,42 @@
-//summary_stats.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if output dir exists
-def res_dir = new File("${currDir}/${params.output_dir}/report")
-if (!res_dir.exists()) {
-        res_dir.mkdirs()
-}
-
-report_path = "${currDir}/scripts/report.py"
-
+// modules/report.nf
 process REPORT {
 
-	//conda 'envs/datamash.yml'
+	tag { "report" }
 
-	label "report"
+	publishDir "${params.out_dir}", mode: 'copy'
 
-	publishDir "${currDir}/${params.output_dir}/report/", mode: 'copy'
-	
 	input:
-	val summary_file 
+	path summary_file
+	path medaka_dir
+	path summary_report_dir
+	path report_script
 
 	output:
-	val "combined_summary_report.html", emit: report 
+		path "combined_summary_report.html", emit: report
 
 	script:
-	"""
-	python ${report_path} --alignreport_dir ${currDir}/${params.output_dir}/medaka --summary_stats_file ${currDir}/${params.output_dir}/summary_stats/$summary_file --output_dir ${currDir}/${params.output_dir}/report    
+		//def report_py  = file("${projectDir}/scripts/report.py")
+		//def align_dir  = file("${projectDir}/${params.out_dir}/medaka")
+
+		if( !report_script.exists() ) exit 1, "REPORT: Script not found: ${report_script}"
+
+		"""
+		set -euo pipefail
+
+		python "${report_script}" \
+			--alignreport_dir "${medaka_dir}" \
+			--summary_stats_file "${summary_file}" \
+			--output_dir "."
+
+		if [ ! -f "combined_summary_report.html" ]; then
+			first_html=\$(ls -1 *.html 2>/dev/null | head -n1 || true)
+			if [ -n "\${first_html}" ]; then
+				cp "\${first_html}" "combined_summary_report.html"
+			else
+				echo "REPORT: No HTML produced by report script" >&2
+				exit 1
+			fi
+		fi
 	"""
 }
-
 

@@ -19,7 +19,7 @@ process DORADO_BARCODER {
 
 	label "dorado_basecaller"
 
-	publishDir "${currDir}/${params.output_dir}/", mode: 'copy'
+	publishDir "${currDir}/${params.out_dir}/", mode: 'copy'
 
 	input:
 	path fastq_file

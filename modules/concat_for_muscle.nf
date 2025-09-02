@@ -1,46 +1,31 @@
-//concat_for_muscle.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
-fasta_header = "${currDir}/scripts/fasta_header.py"
-
+// modules/concat_for_muscle.nf
 process CONCAT_FOR_MUSCLE {
 
-	errorStrategy 'ignore'
+	tag { sampleId }
 
-	//conda 'envs/pyvcf.yml'
-
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${params.out_dir}/medaka", mode: 'copy'
 
 	input:
-	val input_vcf
-	tuple val(sampleId), val(item), val(scheme), val(version)
+		path consensus_fa
+		path reference
+		tuple val(sampleId), val(item), val(scheme), val(version)
 
 	output:
-	val "medaka/${sampleId}.muscle.in.fasta", emit: muscle_fa
-	
+		path "${sampleId}.muscle.in.fasta", emit: muscle_fa
+
+	// errorStrategy 'terminate'   // change to 'ignore' if you want to continue on failure
+
 	script:
-	"""
-	set -e
-	(
-		cat ${currDir}/${params.output_dir}/medaka/${sampleId}.consensus.fasta ${params.primer_schema}/${scheme}/${version}/${scheme}.reference.fasta \
-	> ${currDir}/${params.output_dir}/medaka/${sampleId}.muscle.in.fasta ) || echo "concat-for_muscle" "${sampleId}" >> ${currDir}/${params.output_dir}/medaka/failed_samples.txt
-	"""
-	}
+		//def reference = file("${params.primer_schema}/${scheme}/${version}/${scheme}.reference.fasta")
+
+		if( !consensus_fa.exists() )
+			exit 1, "CONCAT_FOR_MUSCLE: Consensus FASTA not found: ${consensus_fa}"
+		if( !reference.exists() )
+			exit 1, "CONCAT_FOR_MUSCLE: Reference FASTA not found: ${reference}"
+
+		"""
+		set -euo pipefail
+		cat "${consensus_fa}" "${reference}" > "${sampleId}.muscle.in.fasta"
+    """
+}
+

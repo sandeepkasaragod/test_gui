@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 def currDir = System.getProperty("user.dir");
 
-def res_dir = new File("${currDir}/${params.output_dir}/dorado_basecaller")
+def res_dir = new File("${currDir}/${params.out_dir}/dorado_basecaller")
 if (!res_dir.exists()) {
         res_dir.mkdirs()
 }
@@ -32,7 +32,7 @@ process DORADO_BASECALLER {
 
 	label "dorado_basecaller"
 
-	publishDir "${currDir}/${params.output_dir}/dorado_basecaller/", mode: 'copy'
+	publishDir "${currDir}/${params.out_dir}/dorado_basecaller/", mode: 'copy'
 
 	input:
 	path fast5_or_pod5_dir

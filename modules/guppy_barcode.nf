@@ -19,7 +19,7 @@ process GUPPY_BARCODER {
 
 	label 'guppy_barcoder'
 
-	publishDir "${currDir}/${params.output_dir}", mode : 'copy'
+	publishDir "${currDir}/${params.out_dir}", mode : 'copy'
 
 	input:
 	path input_dir

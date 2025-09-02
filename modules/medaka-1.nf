@@ -1,55 +1,35 @@
-//medaka.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
-align_trim = "${currDir}/scripts/align_trim.py"
-
-def osName = System.getProperty("os.name").toLowerCase()
-
+// modules/medaka-1.nf
 process MEDAKA_1 {
 
-	errorStrategy 'ignore'
+	tag { sampleId }
 
-	if (osName.contains("linux")) {
-		//conda 'envs/medaka.yml'
-	}
-
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${params.out_dir}/medaka", mode: 'copy'
 
 	input:
-	val input_bam
-	tuple val(sampleId), val(item), val(scheme), val(version)
+		path input_bam
+		tuple val(sampleId), val(item), val(scheme), val(version)
 
 	output:
-	val "medaka/${sampleId}.1.hdf", emit: hdf
-	
+		path "${sampleId}.1.hdf", emit: hdf
+
 	script:
-	"""
-	set -e
-  (
+		def medaka_model = params.medaka_model ?: 'r941_min_fast_g303'
+		def threads      = (params.threads ?: 5) as int
+
+		if( !input_bam.exists() )
+			exit 1, "MEDAKA_1: Input BAM not found: ${input_bam}"
+
+		"""
+		set -euo pipefail
+		[ -s "${input_bam}.bai" ] || samtools index "${input_bam}"
+
 		medaka consensus \
-		--model ${params.medaka_model} \
-		--threads ${params.threads} \
-		--chunk_len 800 \
-		--chunk_ovlp 400 \
-		--RG 1 ${currDir}/${params.output_dir}/medaka/${sampleId}.trimmed.rg.sorted.bam \
-		${currDir}/${params.output_dir}/medaka/${sampleId}.1.hdf ) || echo "medaka-1" "${sampleId}" >> ${currDir}/${params.output_dir}/medaka/failed_samples.txt
-	"""
-	}
+			--model ${medaka_model} \
+			--threads ${threads} \
+			--chunk_len 800 \
+			--chunk_ovlp 400 \
+			--RG 1 "${input_bam}" \
+			"${sampleId}.1.hdf"
+		"""
+}
+

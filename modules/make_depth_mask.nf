@@ -1,49 +1,46 @@
-//make_depth_mask.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
-make_depth_mask = "${currDir}/scripts/make_depth_mask.py"
-
+// modules/make_depth_mask.nf
 process MAKE_DEPTH_MASK {
 
-	errorStrategy 'ignore'
-	//conda 'envs/pyvcf.yml'
+	tag { sampleId }
 
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${params.out_dir}/medaka", mode: 'copy'
 
 	input:
-	val input_vcf
-	tuple val(sampleId), val(item), val(scheme), val(version)
+		path input_vcf
+		path input_bam
+		path reference
+		path make_depth_mask_script
+		tuple val(sampleId), val(item), val(scheme), val(version)
 
 	output:
-	val "medaka/${sampleId}.coverage_mask.txt", emit: coverage_mask
-	
+		path "${sampleId}.coverage_mask.txt", emit: coverage_mask
+
+	// errorStrategy 'terminate'   // switch to 'ignore' only if you really want to continue on failure
+
 	script:
+		//def make_depth_mask = file("${projectDir}/scripts/make_depth_mask.py")
+		//def reference       = file("${params.primer_schema}/${scheme}/${version}/${scheme}.reference.fasta")
+		//def mask_depth      = (params.mask_depth ?: 20) as int
+
+		if( !make_depth_mask_script.exists() )
+			exit 1, "MAKE_DEPTH_MASK: Script not found: ${make_depth_mask_script}"
+		if( !reference.exists() )
+			exit 1, "MAKE_DEPTH_MASK: Reference not found: ${reference}"
+		if( !input_bam.exists() )
+			exit 1, "MAKE_DEPTH_MASK: Input BAM not found: ${input_bam}"
+		if( !input_vcf.exists() )
+			log.warn "MAKE_DEPTH_MASK: PASS VCF not found (continuing without it): ${input_vcf}"
+
 	"""
-	set -e
-	(
-		python ${make_depth_mask} \
+	set -euo pipefail
+	[ -s "${input_bam}.bai" ] || samtools index "${input_bam}"
+
+	python "${make_depth_mask_script}" \
 		--depth ${params.mask_depth} \
 		--store-rg-depths \
-		${params.primer_schema}/${scheme}/${version}/${scheme}.reference.fasta \
-		${currDir}/${params.output_dir}/medaka/${sampleId}.primertrimmed.rg.sorted.bam \
-		${currDir}/${params.output_dir}/medaka/${sampleId}.coverage_mask.txt ) || echo "make-depth-mask" "${sampleId}" >> ${currDir}/${params.output_dir}/medaka/failed_samples.txt
+		"${reference}" \
+		"${input_bam}" \
+		"${sampleId}.coverage_mask.txt"
 	"""
-	}
+}
+

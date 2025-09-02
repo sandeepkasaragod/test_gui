@@ -1,28 +1,22 @@
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-def res_dir = new File("${currDir}/${params.output_dir}/concatenate")
-if (!res_dir.exists()) {
-        res_dir.mkdirs()
-}
-
+// modules/concat.nf
 process CONCAT {
 
-	//conda 'envs/pyvcf.yml'
-
-	publishDir "${currDir}/${params.output_dir}/concatenate"
+	tag { "concat_genome" }
+	
+	publishDir "${params.out_dir}/concatenate", mode: 'copy'
 
 	input:
-	val "consensus_seqs"
+		path fasta_files
 
 	output:
-	val "concat_genome.fasta", emit: genome_fa
+		path "concat_genome.fasta", emit: genome_fa
 
 	script:
-	"""
-	cat ${currDir}/${params.output_dir}/medaka/*.consensus.fasta >> "${currDir}/${params.output_dir}/concatenate/concat_genome.fasta"
-	"""	
+		if( fasta_files == null || fasta_files.size() == 0 )
+			exit 1, "CONCAT: No input FASTA files provided."
 
+		"""
+			set -euo pipefail
+			cat ${fasta_files.join(' ')} > concat_genome.fasta
+    """
 }

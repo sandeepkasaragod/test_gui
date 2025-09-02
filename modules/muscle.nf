@@ -1,54 +1,39 @@
-//muscle.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
+// modules/muscle.nf
 process MUSCLE {
+
+	tag { sampleId }
 
 	maxForks 1
 
-	errorStrategy 'ignore'
-
-	//conda 'envs/muscle.yml'
-
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${params.out_dir}/medaka", mode: 'copy'
 
 	input:
-	val input_vcf
-	tuple val(sampleId), val(item), val(scheme), val(version)
+		path muscle_in_fa
+		tuple val(sampleId), val(item), val(scheme), val(version)
 
 	output:
-	val "medaka/${sampleId}.muscle.out.fasta", emit: muscle_op_fasta
-	
-	script:
-	"""
-	# Check muscle version
-	version=\$(muscle -version 2>&1 | head -n 1)
+		path "${sampleId}.muscle.out.fasta", emit: muscle_op_fasta
 
-	if echo "\$version" | grep -q "3.8"; then
-		echo "Using MUSCLE v3 syntax"
-		muscle -in ${currDir}/${params.output_dir}/medaka/${sampleId}.muscle.in.fasta \
-		 -out ${currDir}/${params.output_dir}/medaka/${sampleId}.muscle.out.fasta
-	else
-		echo "Using MUSCLE v5 syntax"
-		muscle -align ${currDir}/${params.output_dir}/medaka/${sampleId}.muscle.in.fasta \
-		-output ${currDir}/${params.output_dir}/medaka/${sampleId}.muscle.out.fasta
-  fi
+	// errorStrategy 'terminate'
+
+	script:
+		if( !muscle_in_fa.exists() )
+			exit 1, "MUSCLE: Input FASTA not found: ${muscle_in_fa}"
+
 	"""
-	}
+		set -euo pipefail
+
+		version=\$(muscle -version 2>&1 | head -n 1 || true)
+
+		if echo "\$version" | grep -q "3.8"; then
+			echo "MUSCLE: Using v3 syntax"
+			muscle -in "${muscle_in_fa}" \
+				-out "${sampleId}.muscle.out.fasta"
+		else
+			echo "MUSCLE: Using v5 syntax"
+			muscle -align "${muscle_in_fa}" \
+			-output "${sampleId}.muscle.out.fasta"
+		fi
+	"""
+}
+

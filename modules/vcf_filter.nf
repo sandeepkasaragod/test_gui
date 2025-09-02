@@ -1,52 +1,39 @@
-//vcf_filter.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
-vcf_filter = "${currDir}/scripts/vcf_filter.py"
-
+// modules/vcf_filter.nf
 process VCF_FILTER {
 
-	errorStrategy 'ignore'
+	tag { sampleId }
 
-	//conda 'envs/tabix.yml'
-
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${params.out_dir}/medaka", mode: 'copy'
 
 	input:
-	val input_vcf
-	tuple val(sampleId), val(item), val(scheme), val(version)
+		path input_vcf
+		path vcf_filter_script
+		tuple val(sampleId), val(item), val(scheme), val(version)
 
 	output:
-	val "medaka/${sampleId}.pass.vcf", emit: pass_vcf
-	val "medaka/${sampleId}.fail.vcf", emit: fail_vcf
-	
+		path "${sampleId}.pass.vcf", emit: pass_vcf
+		path "${sampleId}.fail.vcf", emit: fail_vcf
+		path "${sampleId}.pass.vcf.gz", emit: pass_vcf_gz
+	// errorStrategy 'terminate'   // prefer to fail loudly; switch to 'ignore' if you must
+
 	script:
-	"""
-	set -e
-	(
-		python ${vcf_filter} \
-		--medaka \
-		${currDir}/${params.output_dir}/medaka/${sampleId}.merged.vcf \
-		${currDir}/${params.output_dir}/medaka/${sampleId}.pass.vcf \
-		${currDir}/${params.output_dir}/medaka/${sampleId}.fail.vcf \
-		&& bgzip -f ${currDir}/${params.output_dir}/medaka/${sampleId}.pass.vcf \
-		&& tabix -p vcf ${currDir}/${params.output_dir}/medaka/${sampleId}.pass.vcf.gz ) || echo "vcf_filter" "${sampleId}" >> ${currDir}/${params.output_dir}/medaka/failed_samples.txt
-	"""
-	}
+		def vcf_filter = file("${projectDir}/scripts/vcf_filter.py")
+
+		if( !input_vcf.exists() )
+			exit 1, "VCF_FILTER: Input VCF not found: ${input_vcf}"
+		if( !vcf_filter.exists() )
+			exit 1, "VCF_FILTER: vcf_filter.py not found: ${vcf_filter}"
+
+		"""
+		set -euo pipefail
+
+		python "${vcf_filter_script}" --medaka \
+			"${input_vcf}" \
+			"${sampleId}.pass.vcf" \
+			"${sampleId}.fail.vcf"
+
+		bgzip -fc "${sampleId}.pass.vcf" > "${sampleId}.pass.vcf.gz"
+		tabix -p vcf "${sampleId}.pass.vcf.gz"
+    """
+}
+

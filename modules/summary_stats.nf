@@ -1,35 +1,29 @@
-//summary_stats.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if output dir exists
-def res_dir = new File("${currDir}/${params.output_dir}/summary_stats")
-if (!res_dir.exists()) {
-        res_dir.mkdirs()
-}
-
-summary_stat_path = "${currDir}/scripts/summary_stats.py"
-
+// modules/summary_stats.nf
 process SUMMARY_STATS {
 
-	//conda 'envs/datamash.yml'
+	tag { "summary_stats" }
 
-	label "summary_stats"
+	publishDir "${params.out_dir}/summary_stats", mode: 'copy'
 
-	publishDir "${currDir}/${params.output_dir}/summary_stats/", mode: 'copy'
-	
 	input:
-	val item
+		path trigger_file
+		path medaka_dir
+		path summary_stats_script
 
 	output:
-	val "summary_stats.txt", emit: summary 
+		path "summary_stats.txt", emit: summary
 
 	script:
-	"""
-	python ${summary_stat_path} -i ${currDir}/${params.output_dir}/medaka -o "${currDir}/${params.output_dir}/summary_stats/summary_stats.txt"   
-	"""
-}
+    //def summary_py = file("${projectDir}/scripts/summary_stats.py")
+    //def medaka_dir = file("${projectDir}/${params.out_dir}/medaka")
 
+    if( !summary_stats_script.exists() ) exit 1, "SUMMARY_STATS: Script not found: ${summary_stats_script}"
+
+    """
+    set -euo pipefail
+    python "${summary_stats_script}" \
+      -i "${medaka_dir}" \
+      -o "summary_stats.txt"
+    """
+}
 

@@ -1,53 +1,49 @@
-//vcf_merge.nf
-
-nextflow.enable.dsl=2
-
-//def currDir = System.getProperty("user.dir")
-def currDir = workflow.projectDir
-
-//checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
-if (!medaka_dir.exists()) {
-        medaka_dir.mkdirs()
-}
-
-meta_file = "$currDir/${params.meta_file}";
-
-def hash = [:].withDefault { [] }
-
-new File(meta_file).eachLine { line ->
-    def (key, values) = line.split(',', 2)
-    hash[key] << values
-}
-
-vcf_merge = "${currDir}/scripts/vcf_merge.py"
 
 process VCF_MERGE {
+	tag { sampleId }
 
-	errorStrategy 'ignore'
-
-	//conda 'envs/pyvcf.yml'
-
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${params.out_dir}/medaka", mode: 'copy'
 
 	input:
-	val input_vcf
-	tuple val(sampleId), val(item), val(scheme), val(version)
+		path vcf2
+		path vcf1
+		path bed
+		path vcf_merge_script 
+		tuple val(sampleId), val(item), val(scheme), val(version)
 
 	output:
-	val "medaka/${sampleId}.merged.vcf.gz.tbi", emit: vcf
-	
+		//path "${sampleId}.merged.vcf",     emit: merged_vc
+		path "${sampleId}.merged.vcf.gz",     emit: merged_vcf
+		path "${sampleId}.merged.vcf.gz.tbi", emit: merged_tbi
+		path "${sampleId}.primersitereport.txt", emit: primer_report
+
+	//errorStrategy 'ignore'  // keep your previous behaviour if you want
+
 	script:
 	"""
-	set -e
-	(
-		python "${vcf_merge}" "${currDir}/${params.output_dir}/medaka/${sampleId}" \
-		"${params.primer_schema}/${scheme}/${version}/${scheme}.scheme.bed" \
-		"2:${currDir}/${params.output_dir}/medaka/${sampleId}.2.vcf" \
-		"1:${currDir}/${params.output_dir}/medaka/${sampleId}.1.vcf" \
-		2> "${currDir}/${params.output_dir}/medaka/${sampleId}.primersitereport.txt" && \
-		bgzip -f "${currDir}/${params.output_dir}/medaka/${sampleId}.merged.vcf" && \
-		tabix -f -p vcf "${currDir}/${params.output_dir}/medaka/${sampleId}.merged.vcf.gz" ) || echo "vcf_merge" "${sampleId}" >> ${currDir}/${params.output_dir}/medaka/failed_samples.txt
+	set -euo pipefail
+
+	# Stage script from the repo into the task dir
+	#MERGER="\$(basename ${file("${projectDir}/scripts/vcf_merge.py")})"
+
+	# Sanity checks
+	[ -s "${vcf1}" ] || { echo "VCF1 missing: ${vcf1}" >&2; exit 1; }
+	[ -s "${vcf2}" ] || { echo "VCF2 missing: ${vcf2}" >&2; exit 1; }
+	[ -s "${bed}"  ] || { echo "BED missing: ${bed}"  >&2; exit 1; }
+
+	# Run merge; use sampleId as output prefix in the task work dir
+	python "${vcf_merge_script}" \
+		"${sampleId}" \
+		"${bed}" \
+		"2:${vcf2}" \
+		"1:${vcf1}" \
+		2> "${sampleId}.primersitereport.txt"
+
+	bgzip -f "${sampleId}.merged.vcf"
+	tabix -f -p vcf "${sampleId}.merged.vcf.gz"
 	"""
-	}
+}
+
+// 42   bgzip -f "${sampleId}.merged.vcf"
+// 43   tabix -f -p vcf "${sampleId}.merged.vcf.gz"
 

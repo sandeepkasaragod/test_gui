@@ -5,7 +5,7 @@ nextflow.enable.dsl=2
 def currDir = System.getProperty("user.dir")
 
 //checking if medaka dir exists
-def medaka_dir = new File("${currDir}/${params.output_dir}/medaka")
+def medaka_dir = new File("${currDir}/${params.out_dir}/medaka")
 if (!medaka_dir.exists()) {
         medaka_dir.mkdirs()
 }
@@ -23,7 +23,7 @@ align_trim = "${currDir}/scripts/align_trim.py"
 
 process MEDAKA_2 {
 
-	publishDir "${currDir}/${params.output_dir}", mode: 'copy'
+	publishDir "${currDir}/${params.out_dir}", mode: 'copy'
 
 	input:
 	val input_hdf
@@ -39,7 +39,7 @@ process MEDAKA_2 {
 --threads ${params.threads} \
 --chunk_len 800 \
 --chunk_ovlp 400 \
---RG 2 ${currDir}/${params.output_dir}/medaka/${sampleId}.trimmed.rg.sorted.bam \
-${currDir}/${params.output_dir}/medaka/${sampleId}.2.hdf
+--RG 2 ${currDir}/${params.out_dir}/medaka/${sampleId}.trimmed.rg.sorted.bam \
+${currDir}/${params.out_dir}/medaka/${sampleId}.2.hdf
 	"""
 	}

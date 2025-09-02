@@ -1,28 +1,26 @@
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir")
-
-//checking if output dir exists
-def res_dir = new File("${currDir}/${params.output_dir}/mafft")
-if (!res_dir.exists()) {
-        res_dir.mkdirs()
-}
-
+// modules/mafft.nf
 process MAFFT {
 
-	//conda 'envs/mafft.yml'
+	tag { "mafft_alignment" }
 
-	publishDir "${currDir}/${params.output_dir}/mafft/", mode: 'copy'
-	
+	publishDir "${params.out_dir}/mafft", mode: 'copy'
+
 	input:
-	val concat_fa
-	
+		path concat_fa
+
 	output:
-	val "genome-aln.fasta", emit: mafft_fa
+		path "genome-aln.fasta", emit: mafft_fa
+
+	// errorStrategy 'terminate'
 
 	script:
-	"""
-	mafft ${currDir}/${params.output_dir}/concatenate/*.fasta \
-	> ${currDir}/${params.output_dir}/mafft/genome-aln.fasta
-	"""
+		//def threads = (params.threads ?: 4) as int
+		if( !concat_fa.exists() )
+			exit 1, "MAFFT: Input concatenated FASTA not found: ${concat_fa}"
+
+		"""
+		set -euo pipefail
+		mafft --thread ${params.threads} "${concat_fa}" > "genome-aln.fasta"
+    """
 }
+

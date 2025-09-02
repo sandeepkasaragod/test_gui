@@ -1,31 +1,26 @@
-//guppy_plex.nf
-
-nextflow.enable.dsl=2
-
-def currDir = System.getProperty("user.dir");
-
-script_path = "${projectDir}/scripts/directory_plex.py"
 process PLEX_DIRS {
-	//conda 'envs/biopython.yml'
+  tag { "${sample_id}_${item}" }
+  publishDir "${projectDir}/${params.fastq_dir}", mode: 'copy', overwrite: true
 
-	label 'plex_dirs'
+  input:
+    val input_dir
+		path script_ch
+    tuple val(sample_id), val(item), val(scheme), val(version)
 
-	publishDir "${projectDir}/${params.fastq_dir}", mode: 'copy'
+  output:
+    path "${sample_id}_${item}${params.fq_extension}", emit: reads
 
-	input:
-	val input_dir
-	tuple val(sample_id), val(item), val(scheme), val(version)
-	
-	output:
-	val "${params.fastq_dir}", emit: fastq
+  script:
+    def src_dir     = file("${input_dir}/${item}")
+    """
+    set -euo pipefail
+		python "${script_ch}" \
+      --skip_quality_check \
+      --min_length ${params.seq_len} \
+      -d "${input_dir}/${item}" \
+      -o "${sample_id}_${item}${params.fq_extension}"
 
-	script:
-
-	"""
-	python $script_path \
-		--skip_quality_check \
-		-min ${params.seq_len} \
-		-d ${input_dir}/${item} \
-		-o "${projectDir}/${params.fastq_dir}/${sample_id}_${item}${params.fq_extension}"
-	"""
+    """
 }
+//python "${script_path}" \
+//#def script_path = "${projectDir}/scripts/directory_plex.py"
